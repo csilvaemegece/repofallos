@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{{ fallo.rol }} — {{ fallo.caratula }}{% endblock %}
+{% block breadcrumb %}Fallo {{ fallo.rol }}{% endblock %}
+
+{% block content %}
+<div class="page-title">{{ fallo.rol }}{% if fallo.caratula %} — {{ fallo.caratula }}{% endif %}</div>
+<div class="page-sub">
+  {% if fallo.estado == 'publicado' %}
+    <span class="estado estado-publicado">Publicado</span>
+  {% else %}
+    <span class="estado estado-borrador">Borrador</span>
+  {% endif %}
+</div>
+
+<div class="card" style="max-width:820px; margin-bottom:18px;">
+  <dl class="kv">
+    <dt>Materia</dt><dd>{{ fallo.materia or '—' }}</dd>
+    <dt>Tipo de recurso</dt><dd>{{ fallo.tipo_recurso or '—' }}</dd>
+    <dt>Resultado</dt><dd>{{ fallo.resultado or '—' }}</dd>
+    <dt>Sala</dt><dd>{{ fallo.sala or '—' }}</dd>
+    <dt>Ministro redactor</dt><dd>{{ fallo.ministro_redactor or '—' }}</dd>
+    <dt>Fecha del fallo</dt><dd>{{ fallo.fecha_fallo or '—' }}</dd>
+  </dl>
+
+  {% if fallo.tags %}
+    <div style="margin-top:14px;">
+      {% for tag in fallo.tags.split(',') %}
+        {% if tag.strip() %}<span class="tag">{{ tag.strip() }}</span>{% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<div class="card" style="max-width:820px; margin-bottom:18px;">
+  <div style="font-weight:600; margin-bottom:8px;">Resumen de la causa</div>
+  <div style="white-space:pre-wrap; font-size:.88rem; line-height:1.55;">
+    {{ fallo.resumen or 'Sin resumen cargado.' }}
+  </div>
+</div>
+
+{% if fallo.texto_fallo %}
+<div class="card" style="max-width:820px; margin-bottom:18px;">
+  <div style="font-weight:600; margin-bottom:8px;">Texto del fallo</div>
+  <div style="white-space:pre-wrap; font-size:.82rem; line-height:1.55; max-height:420px; overflow-y:auto;">
+    {{ fallo.texto_fallo }}
+  </div>
+</div>
+{% endif %}
+
+{% if fallo.archivo_pdf %}
+<div class="card" style="max-width:820px; margin-bottom:18px;">
+  <a href="/fallos/{{ fallo.id }}/pdf" class="btn btn-ghost">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Descargar {{ fallo.archivo_pdf_nombre or 'PDF' }}
+  </a>
+</div>
+{% endif %}
+
+<div style="display:flex; gap:10px;">
+  <a href="/fallos/{{ fallo.id }}/editar" class="btn btn-primary">Editar</a>
+  <form method="POST" action="/fallos/{{ fallo.id }}/eliminar"
+        onsubmit="return confirm('¿Eliminar este fallo? Esta acción no se puede deshacer.');">
+    <button type="submit" class="btn btn-danger">Eliminar</button>
+  </form>
+  <a href="/fallos" class="btn btn-ghost">Volver al listado</a>
+</div>
+{% endblock %}

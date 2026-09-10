@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{% if modo == 'nuevo' %}Cargar Fallo{% else %}Editar Fallo{% endif %}{% endblock %}
+{% block breadcrumb %}{% if modo == 'nuevo' %}Cargar Fallo{% else %}Editar Fallo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-title">{% if modo == 'nuevo' %}Cargar Fallo{% else %}Editar Fallo{% endif %}</div>
+<div class="page-sub">Completá la metadata, clasificá el fallo y agregá un resumen de la causa.</div>
+
+<div class="card" style="max-width:820px;">
+  <form method="POST" enctype="multipart/form-data">
+    <div class="field-row">
+      <div>
+        <label>Rol</label>
+        <input type="text" name="rol" value="{{ fallo.rol if fallo else '' }}" placeholder="Ej: 1234-2025" required>
+      </div>
+      <div>
+        <label>Fecha del fallo</label>
+        <input type="date" name="fecha_fallo" value="{{ fallo.fecha_fallo if fallo else '' }}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Carátula</label>
+      <input type="text" name="caratula" value="{{ fallo.caratula if fallo else '' }}" placeholder="Ej: Pérez con González">
+    </div>
+
+    <div class="field-row-3">
+      <div>
+        <label>Sala</label>
+        <input type="text" name="sala" value="{{ fallo.sala if fallo else '' }}" placeholder="Ej: Primera Sala">
+      </div>
+      <div>
+        <label>Ministro redactor</label>
+        <input type="text" name="ministro_redactor" value="{{ fallo.ministro_redactor if fallo else '' }}">
+      </div>
+      <div>
+        <label>Materia</label>
+        <select name="materia">
+          <option value="">— Seleccionar —</option>
+          {% for m in materias %}
+            <option value="{{ m }}" {% if fallo and fallo.materia == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Tipo de recurso</label>
+        <input type="text" name="tipo_recurso" list="tipos_recurso"
+               value="{{ fallo.tipo_recurso if fallo else '' }}" placeholder="Ej: Apelación">
+        <datalist id="tipos_recurso">
+          {% for t in tipos_recurso_sugeridos %}<option value="{{ t }}">{% endfor %}
+        </datalist>
+      </div>
+      <div>
+        <label>Resultado</label>
+        <input type="text" name="resultado" list="resultados"
+               value="{{ fallo.resultado if fallo else '' }}" placeholder="Ej: Confirma">
+        <datalist id="resultados">
+          {% for r in resultados_sugeridos %}<option value="{{ r }}">{% endfor %}
+        </datalist>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Tags (separados por coma)</label>
+      <input type="text" name="tags" value="{{ fallo.tags if fallo else '' }}" placeholder="Ej: prescripción, buena fe">
+    </div>
+
+    <div class="field">
+      <label>Resumen de la causa</label>
+      <textarea name="resumen" rows="5" placeholder="Hechos, cuestión jurídica, decisión y argumento central del fallo.">{{ fallo.resumen if fallo else '' }}</textarea>
+    </div>
+
+    <div class="field">
+      <label>Texto del fallo (opcional, para búsqueda y futura generación de resumen con IA)</label>
+      <textarea name="texto_fallo" rows="8" placeholder="Pegá acá el texto de la sentencia, si lo tenés.">{{ fallo.texto_fallo if fallo else '' }}</textarea>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Adjuntar PDF del fallo{% if fallo and fallo.archivo_pdf_nombre %} (actual: {{ fallo.archivo_pdf_nombre }}){% endif %}</label>
+        <input type="file" name="archivo_pdf" accept="application/pdf">
+      </div>
+      <div>
+        <label>Estado</label>
+        <select name="estado">
+          {% for e in estados %}
+            <option value="{{ e }}" {% if fallo and fallo.estado == e %}selected{% endif %}>{{ e|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:8px;">
+      <button type="submit" class="btn btn-primary">Guardar</button>
+      <a href="{% if fallo %}/fallos/{{ fallo.id }}{% else %}/fallos{% endif %}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

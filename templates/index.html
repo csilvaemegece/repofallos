@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Repositorio de Fallos{% endblock %}
+{% block breadcrumb %}Repositorio{% endblock %}
+
+{% block content %}
+<div class="page-title">Repositorio de Fallos</div>
+<div class="page-sub">Fallos clasificados y resumidos · C.A. de Rancagua</div>
+
+<div class="card" style="margin-bottom:22px;">
+  <form method="GET" action="/fallos">
+    <div class="field-row-3">
+      <div>
+        <label>Buscar (rol, carátula, resumen)</label>
+        <input type="text" name="q" value="{{ filtros.q }}" placeholder="Ej: 1234-2025 o palabra clave">
+      </div>
+      <div>
+        <label>Materia</label>
+        <select name="materia">
+          <option value="">Todas</option>
+          {% for m in materias %}
+            <option value="{{ m }}" {% if filtros.materia == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Resultado</label>
+        <select name="resultado">
+          <option value="">Todos</option>
+          {% for r in resultados %}
+            <option value="{{ r }}" {% if filtros.resultado == r %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field-row-3">
+      <div>
+        <label>Tipo de recurso</label>
+        <select name="tipo_recurso">
+          <option value="">Todos</option>
+          {% for t in tipos_recurso %}
+            <option value="{{ t }}" {% if filtros.tipo_recurso == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Sala</label>
+        <select name="sala">
+          <option value="">Todas</option>
+          {% for s in salas %}
+            <option value="{{ s }}" {% if filtros.sala == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Ministro redactor</label>
+        <select name="ministro_redactor">
+          <option value="">Todos</option>
+          {% for mi in ministros %}
+            <option value="{{ mi }}" {% if filtros.ministro_redactor == mi %}selected{% endif %}>{{ mi }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field-row-3">
+      <div>
+        <label>Tag</label>
+        <input type="text" name="tag" value="{{ filtros.tag }}" placeholder="Ej: prescripción">
+      </div>
+      <div>
+        <label>Desde (fecha del fallo)</label>
+        <input type="date" name="desde" value="{{ filtros.desde }}">
+      </div>
+      <div>
+        <label>Hasta (fecha del fallo)</label>
+        <input type="date" name="hasta" value="{{ filtros.hasta }}">
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <label style="display:flex; align-items:center; gap:7px; font-size:.83rem; color:var(--text); margin:0;">
+        <select name="estado" style="width:auto;">
+          <option value="" {% if not filtros.estado %}selected{% endif %}>Cualquier estado</option>
+          <option value="publicado" {% if filtros.estado == 'publicado' %}selected{% endif %}>Publicado</option>
+          <option value="borrador" {% if filtros.estado == 'borrador' %}selected{% endif %}>Borrador</option>
+        </select>
+      </label>
+      <div style="display:flex; gap:10px;">
+        <a href="/fallos" class="btn btn-ghost">Limpiar</a>
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="toolbar">
+  <div class="meta"><span class="badge">{{ fallos|length }}</span> fallo(s)</div>
+  <a href="/fallos/nuevo" class="btn btn-success" style="margin-left:auto;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Cargar Fallo
+  </a>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Rol</th><th>Carátula</th><th>Materia</th><th>Tipo recurso</th>
+        <th>Resultado</th><th>Sala</th><th>Ministro Redactor</th>
+        <th>Fecha</th><th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in fallos %}
+      <tr style="cursor:pointer;" onclick="window.location='/fallos/{{ f.id }}'">
+        <td>{{ f.rol }}</td>
+        <td>{{ f.caratula }}</td>
+        <td>{{ f.materia }}</td>
+        <td>{{ f.tipo_recurso }}</td>
+        <td>{{ f.resultado }}</td>
+        <td>{{ f.sala }}</td>
+        <td>{{ f.ministro_redactor }}</td>
+        <td>{{ f.fecha_fallo }}</td>
+        <td>
+          {% if f.estado == 'publicado' %}
+            <span class="estado estado-publicado">Publicado</span>
+          {% else %}
+            <span class="estado estado-borrador">Borrador</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" style="text-align:center; color:var(--muted); padding:24px;">
+        No hay fallos que coincidan con los filtros.
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}
