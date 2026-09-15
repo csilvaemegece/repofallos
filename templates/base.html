@@ -132,10 +132,63 @@
   .kv { display:grid; grid-template-columns:160px 1fr; gap:6px 14px; font-size:.85rem; }
   .kv dt { color:var(--muted); }
   .kv dd { color:var(--text); }
+
+  /* ══ OVERLAY DE CARGA (para consultas largas contra SITCORTE) ══ */
+  .loading-overlay {
+    position:fixed; inset:0; z-index:950;
+    background:rgba(5,10,22,.88);
+    backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none;
+    transition:opacity .18s;
+  }
+  .loading-overlay.visible { opacity:1; pointer-events:all; }
+
+  .loading-box {
+    background:#0f1929; border:1px solid var(--border); border-radius:14px;
+    padding:32px 40px; width:100%; max-width:340px; text-align:center;
+    box-shadow:0 24px 64px rgba(0,0,0,.6);
+  }
+
+  .loading-spinner {
+    width:38px; height:38px; margin:0 auto 18px;
+    border:3px solid var(--border); border-top-color:var(--accent);
+    border-radius:50%;
+    animation:girar .8s linear infinite;
+  }
+  @keyframes girar { to { transform:rotate(360deg); } }
+
+  .loading-box h3 { font-size:.9rem; font-weight:600; margin-bottom:6px; }
+  .loading-box p  { font-size:.78rem; color:var(--muted); margin-bottom:16px; }
+
+  .loading-bar-track {
+    width:100%; height:6px; border-radius:3px; overflow:hidden;
+    background:#182234;
+  }
+  .loading-bar-fill {
+    height:100%; width:30%; border-radius:3px;
+    background:linear-gradient(90deg, var(--accent), #6ee7ff);
+    animation:avanzar 1.4s ease-in-out infinite;
+  }
+  @keyframes avanzar {
+    0%   { margin-left:-30%; width:30%; }
+    50%  { margin-left:40%;  width:45%; }
+    100% { margin-left:110%; width:30%; }
+  }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
 <body>
+
+<!-- ══ OVERLAY DE CARGA (para consultas largas contra SITCORTE) ══ -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <h3 id="loadingTitulo">Consultando SITCORTE…</h3>
+    <p id="loadingSubtitulo">Esto puede tardar, no cierres ni cambies de pestaña.</p>
+    <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
+  </div>
+</div>
 
 <!-- ══ SIDEBAR ════════════════════════════════════════════════════════ -->
 <aside class="sidebar">
@@ -213,6 +266,15 @@
     }
   }
   tick(); setInterval(tick, 60000);
+
+  // Overlay de carga — uso: <form onsubmit="mostrarCarga('Título…', 'Subtítulo'); return true;">
+  function mostrarCarga(titulo, subtitulo) {
+    const el = document.getElementById('loadingOverlay');
+    if (!el) return;
+    if (titulo)    document.getElementById('loadingTitulo').textContent = titulo;
+    if (subtitulo) document.getElementById('loadingSubtitulo').textContent = subtitulo;
+    el.classList.add('visible');
+  }
 </script>
 {% block extra_scripts %}{% endblock %}
 </body>

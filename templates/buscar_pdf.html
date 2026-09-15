@@ -16,7 +16,8 @@
 {% endif %}
 
 <div class="card" style="max-width:480px;">
-  <form method="POST">
+  <form method="POST"
+        onsubmit="mostrarCarga('Buscando la sentencia…', 'Consultando la tramitación de la causa y descargando el PDF.'); return true;">
     <div class="field">
       <label>Usuario SITCORTE</label>
       <input type="text" name="usuario" autocomplete="username" required>
