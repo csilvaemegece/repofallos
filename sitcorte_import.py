@@ -155,13 +155,18 @@ def _extraer_detalle(html_texto):
     return filas
 
 
-def consultar_fallos(usuario, clave, fec_desde, fec_hasta,
-                      cod_sala="0", cod_libro="", cod_est_fallo="0"):
-    """Login + consulta del informe "Recursos Fallados". Devuelve una lista
-    de dicts (uno por causa fallada) con las columnas crudas del informe."""
+def crear_sesion_logueada(usuario, clave):
+    """Login que devuelve la sesión ya autenticada, para reusarla en varias
+    consultas seguidas (ej. importar N causas + traer el PDF de cada una)
+    sin loguearse de nuevo por cada una."""
     s = crear_sesion()
     login(s, usuario, clave)
+    return s
 
+
+def consultar_fallos_con_sesion(s, fec_desde, fec_hasta,
+                                 cod_sala="0", cod_libro="", cod_est_fallo="0"):
+    """Igual que consultar_fallos() pero reusando una sesión ya logueada."""
     try:
         s.get(URL_MENU_FALLO, timeout=30)
     except requests.RequestException as e:
@@ -184,6 +189,14 @@ def consultar_fallos(usuario, clave, fec_desde, fec_hasta,
         raise SitcorteError("La sesión de SITCORTE expiró durante la consulta.")
 
     return _extraer_detalle(r_post.text)
+
+
+def consultar_fallos(usuario, clave, fec_desde, fec_hasta,
+                      cod_sala="0", cod_libro="", cod_est_fallo="0"):
+    """Login + consulta del informe "Recursos Fallados". Devuelve una lista
+    de dicts (uno por causa fallada) con las columnas crudas del informe."""
+    s = crear_sesion_logueada(usuario, clave)
+    return consultar_fallos_con_sesion(s, fec_desde, fec_hasta, cod_sala, cod_libro, cod_est_fallo)
 
 
 # ── Mapeo SITCORTE -> esquema de fallos_core ────────────────────────────────
@@ -246,13 +259,10 @@ def _extraer_url_pdf_sentencia(html_texto):
     return None
 
 
-def obtener_pdf_fallo(usuario, clave, cod_libro, rol_recurso, era_recurso):
-    """Login + consulta de tramitación por Libro/Rol/Año + descarga del PDF
-    de la sentencia. Devuelve (pdf_bytes, nombre_archivo_sugerido) o lanza
-    SitcorteError si la causa no tiene un trámite de tipo "Sentencia"."""
-    s = crear_sesion()
-    login(s, usuario, clave)
-
+def obtener_pdf_fallo_con_sesion(s, cod_libro, rol_recurso, era_recurso):
+    """Igual que obtener_pdf_fallo() pero reusando una sesión ya logueada
+    (para no volver a loguearse por cada causa al enriquecer una importación
+    masiva)."""
     try:
         s.get(URL_MENU_TRAMITAR, timeout=30)
     except requests.RequestException:
@@ -299,6 +309,13 @@ def obtener_pdf_fallo(usuario, clave, cod_libro, rol_recurso, era_recurso):
 
     nombre = f"sentencia_{cod_libro}-{rol_recurso}-{era_recurso}.pdf"
     return r_pdf.content, nombre
+
+
+def obtener_pdf_fallo(usuario, clave, cod_libro, rol_recurso, era_recurso):
+    """Login + obtener_pdf_fallo_con_sesion(), para uso puntual (un solo
+    fallo, ej. el botón "Buscar PDF en SITCORTE" de la ficha)."""
+    s = crear_sesion_logueada(usuario, clave)
+    return obtener_pdf_fallo_con_sesion(s, cod_libro, rol_recurso, era_recurso)
 
 
 def mapear_a_fallo(raw):

@@ -43,6 +43,31 @@ def _guardar_pdf_si_viene(data, pdf_actual=None, pdf_actual_nombre=None):
     return data
 
 
+def _adjuntar_pdf_y_texto(fallo_id, datos_base, pdf_bytes, nombre_sugerido):
+    """Guarda el PDF en disco, completa texto_fallo (si estaba vacío)
+    extrayéndolo del PDF, y persiste el fallo. datos_base debe traer los
+    campos actuales del fallo (CAMPOS_FALLO) para no perder lo ya cargado."""
+    nombre_disco = f"{uuid.uuid4().hex}_{nombre_sugerido}"
+    with open(os.path.join(UPLOAD_DIR, nombre_disco), "wb") as f:
+        f.write(pdf_bytes)
+
+    data = dict(datos_base)
+    data["archivo_pdf"] = nombre_disco
+    data["archivo_pdf_nombre"] = nombre_sugerido
+    if not data.get("texto_fallo"):
+        data["texto_fallo"] = pdf_text.extraer_texto(pdf_bytes)
+    fc.actualizar_fallo(fallo_id, data)
+    return data
+
+
+def _split_rol(rol):
+    """'818-2026' -> ('818', '2026'). Devuelve (None, None) si no calza."""
+    partes = (rol or "").rsplit("-", 1)
+    if len(partes) == 2 and partes[1].isdigit():
+        return partes[0].strip(), partes[1].strip()
+    return None, None
+
+
 @app.route("/")
 def index():
     return redirect(url_for("listado_fallos"))
@@ -179,6 +204,7 @@ def importar_ejecutar():
     materia_sel = request.form.get("materia", "")
     sala_sel = request.form.get("sala", "")
     resultado_sel = request.form.get("resultado", "")
+    traer_texto = request.form.get("traer_texto") == "1"
 
     ctx = dict(
         active_menu="importar",
@@ -192,8 +218,9 @@ def importar_ejecutar():
                                resumen=None, **ctx)
 
     try:
-        filas = si.consultar_fallos(
-            usuario, clave, fec_desde, fec_hasta,
+        s = si.crear_sesion_logueada(usuario, clave)
+        filas = si.consultar_fallos_con_sesion(
+            s, fec_desde, fec_hasta,
             cod_sala=si.SALAS_COD.get(sala_sel, "0"),
             cod_libro=si.MATERIAS_COD_LIBRO.get(materia_sel, ""),
             cod_est_fallo=si.ESTADOS_FALLO_COD.get(resultado_sel, "0"),
@@ -201,29 +228,35 @@ def importar_ejecutar():
     except si.SitcorteError as e:
         return render_template("importar.html", error=str(e), resumen=None, **ctx)
 
-    nuevos, duplicados, ids_nuevos = 0, 0, []
+    nuevos, duplicados = 0, 0
+    con_texto, sin_texto = 0, 0
     for raw in filas:
         data = si.mapear_a_fallo(raw)
         fallo_id, creado = fc.importar_fallo(data)
-        if creado:
-            nuevos += 1
-            ids_nuevos.append(fallo_id)
-        else:
+        if not creado:
             duplicados += 1
+            continue
+        nuevos += 1
 
-    resumen = {"total": len(filas), "nuevos": nuevos, "duplicados": duplicados}
+        if traer_texto:
+            numero, anio = _split_rol(data["rol"])
+            cod_libro = si.MATERIAS_COD_LIBRO.get(data["materia"])
+            if numero and anio and cod_libro:
+                try:
+                    pdf_bytes, nombre_sugerido = si.obtener_pdf_fallo_con_sesion(s, cod_libro, numero, anio)
+                    _adjuntar_pdf_y_texto(fallo_id, data, pdf_bytes, nombre_sugerido)
+                    con_texto += 1
+                except si.SitcorteError:
+                    sin_texto += 1
+            else:
+                sin_texto += 1
+
+    resumen = {"total": len(filas), "nuevos": nuevos, "duplicados": duplicados,
+               "traer_texto": traer_texto, "con_texto": con_texto, "sin_texto": sin_texto}
     return render_template("importar.html", error=None, resumen=resumen, **ctx)
 
 
 # ── Buscar el PDF de la sentencia en SITCORTE a partir del ROL ──────────────
-
-def _split_rol(rol):
-    """'818-2026' -> ('818', '2026'). Devuelve (None, None) si no calza."""
-    partes = (rol or "").rsplit("-", 1)
-    if len(partes) == 2 and partes[1].isdigit():
-        return partes[0].strip(), partes[1].strip()
-    return None, None
-
 
 @app.route("/fallos/<int:fallo_id>/buscar-pdf", methods=["GET", "POST"])
 def buscar_pdf_fallo(fallo_id):
@@ -250,16 +283,8 @@ def buscar_pdf_fallo(fallo_id):
         except si.SitcorteError as e:
             return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo, error=str(e))
 
-        nombre_disco = f"{uuid.uuid4().hex}_{nombre_sugerido}"
-        with open(os.path.join(UPLOAD_DIR, nombre_disco), "wb") as f:
-            f.write(pdf_bytes)
-
-        data = {campo: fallo.get(campo, "") for campo in fc.CAMPOS_FALLO}
-        data["archivo_pdf"] = nombre_disco
-        data["archivo_pdf_nombre"] = nombre_sugerido
-        if not data.get("texto_fallo"):
-            data["texto_fallo"] = pdf_text.extraer_texto(pdf_bytes)
-        fc.actualizar_fallo(fallo_id, data)
+        datos_base = {campo: fallo.get(campo, "") for campo in fc.CAMPOS_FALLO}
+        _adjuntar_pdf_y_texto(fallo_id, datos_base, pdf_bytes, nombre_sugerido)
         return redirect(url_for("detalle_fallo", fallo_id=fallo_id))
 
     return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo,

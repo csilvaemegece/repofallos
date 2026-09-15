@@ -24,6 +24,11 @@
       <span class="badge">{{ resumen.total }}</span> causas encontradas en SITCORTE ·
       <strong style="color:var(--success);">{{ resumen.nuevos }}</strong> nuevas cargadas como borrador ·
       <strong style="color:var(--muted);">{{ resumen.duplicados }}</strong> ya existían (omitidas)
+      {% if resumen.traer_texto %}
+        <br>
+        <strong style="color:var(--success);">{{ resumen.con_texto }}</strong> con PDF y texto de la sentencia traídos ·
+        <strong style="color:var(--warn);">{{ resumen.sin_texto }}</strong> sin sentencia disponible todavía (quedaron solo con la metadata)
+      {% endif %}
     </div>
     <a href="/fallos?estado=borrador" class="btn btn-primary" style="margin-top:14px;">Ver borradores</a>
   </div>
@@ -74,6 +79,13 @@
         </select>
       </div>
     </div>
+    <label style="display:flex; align-items:flex-start; gap:8px; font-size:.83rem; color:var(--text); margin-bottom:16px;">
+      <input type="checkbox" name="traer_texto" value="1" style="margin-top:3px;">
+      <span>
+        Traer también el PDF y el texto de la sentencia de cada causa nueva (no solo la metadata).
+        <br><span style="color:var(--muted); font-size:.78rem;">Más lento — una consulta extra por causa. Recomendado con rangos de fecha cortos.</span>
+      </span>
+    </label>
     <button type="submit" class="btn btn-primary">Importar</button>
   </form>
 </div>
