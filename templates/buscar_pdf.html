@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar PDF de la sentencia{% endblock %}
+{% block breadcrumb %}Buscar PDF — {{ fallo.rol }}{% endblock %}
+
+{% block content %}
+<div class="page-title">Buscar PDF de la sentencia en SITCORTE</div>
+<div class="page-sub">
+  {{ fallo.materia }} {{ fallo.rol }}{% if fallo.caratula %} — {{ fallo.caratula }}{% endif %}<br>
+  Busca en la tramitación de la causa el trámite de tipo "Sentencia" y descarga su PDF.
+  Las credenciales solo se usan para esta consulta, no se guardan.
+</div>
+
+{% if error %}
+  <div class="alert alert-error">⚠ {{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width:480px;">
+  <form method="POST">
+    <div class="field">
+      <label>Usuario SITCORTE</label>
+      <input type="text" name="usuario" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="text" name="clave" autocomplete="current-password" required>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button type="submit" class="btn btn-primary">Buscar y adjuntar PDF</button>
+      <a href="/fallos/{{ fallo.id }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

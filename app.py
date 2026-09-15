@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 
 import fallos_core as fc
 import sitcorte_import as si
+import pdf_text
 
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -212,6 +213,59 @@ def importar_ejecutar():
 
     resumen = {"total": len(filas), "nuevos": nuevos, "duplicados": duplicados}
     return render_template("importar.html", error=None, resumen=resumen, **ctx)
+
+
+# ── Buscar el PDF de la sentencia en SITCORTE a partir del ROL ──────────────
+
+def _split_rol(rol):
+    """'818-2026' -> ('818', '2026'). Devuelve (None, None) si no calza."""
+    partes = (rol or "").rsplit("-", 1)
+    if len(partes) == 2 and partes[1].isdigit():
+        return partes[0].strip(), partes[1].strip()
+    return None, None
+
+
+@app.route("/fallos/<int:fallo_id>/buscar-pdf", methods=["GET", "POST"])
+def buscar_pdf_fallo(fallo_id):
+    fallo = fc.obtener_fallo(fallo_id)
+    if not fallo:
+        abort(404)
+
+    numero, anio = _split_rol(fallo.get("rol"))
+    cod_libro = si.MATERIAS_COD_LIBRO.get(fallo.get("materia"))
+    puede_buscar = bool(numero and anio and cod_libro)
+
+    if request.method == "POST":
+        usuario = request.form.get("usuario", "").strip()
+        clave = request.form.get("clave", "")
+        if not puede_buscar:
+            error = ("No se pudo determinar Libro/Rol/Año de esta causa "
+                      "(completá materia y rol con el formato '123-2025' antes de buscar).")
+            return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo, error=error)
+        if not usuario or not clave:
+            return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo,
+                                   error="Completá usuario y clave de SITCORTE.")
+        try:
+            pdf_bytes, nombre_sugerido = si.obtener_pdf_fallo(usuario, clave, cod_libro, numero, anio)
+        except si.SitcorteError as e:
+            return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo, error=str(e))
+
+        nombre_disco = f"{uuid.uuid4().hex}_{nombre_sugerido}"
+        with open(os.path.join(UPLOAD_DIR, nombre_disco), "wb") as f:
+            f.write(pdf_bytes)
+
+        data = {campo: fallo.get(campo, "") for campo in fc.CAMPOS_FALLO}
+        data["archivo_pdf"] = nombre_disco
+        data["archivo_pdf_nombre"] = nombre_sugerido
+        if not data.get("texto_fallo"):
+            data["texto_fallo"] = pdf_text.extraer_texto(pdf_bytes)
+        fc.actualizar_fallo(fallo_id, data)
+        return redirect(url_for("detalle_fallo", fallo_id=fallo_id))
+
+    return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo,
+                           error=None if puede_buscar else
+                           "Esta causa no tiene materia y rol en formato 'número-año' — "
+                           "completalos editando el fallo antes de buscar el PDF.")
 
 
 if __name__ == "__main__":

@@ -35,6 +35,8 @@ URL_LOGIN_PAGE   = HOST + "/SITCORTEWEB/jsp/Login/Login.jsp"
 URL_LOGIN_ACTION = HOST + "/SITCORTEWEB/InicioAplicacion.do"
 URL_MENU_FALLO   = HOST + "/SITCORTEWEB/InformesViewAccion.do?TipMenuINF=2"
 URL_FORM_POST    = HOST + "/SITCORTEWEB/InformesDAction.do"
+URL_MENU_TRAMITAR = HOST + "/SITCORTEWEB/TramitacionViewAccion.do?TipMenuTrm=1"
+URL_CONSULTA_ROL   = HOST + "/SITCORTEWEB/ConsultaRolTramitarAccion.do"
 
 TOKEN_RE = re.compile(
     r'name="org\.apache\.struts\.taglib\.html\.TOKEN"\s+value="([^"]+)"')
@@ -214,6 +216,89 @@ def _split_recurso(recurso):
         materia, numero, anio = partes
         return materia.strip(), f"{numero.strip()}-{anio.strip()}"
     return "", recurso
+
+
+# ── Búsqueda del PDF de la sentencia a partir del ROL ───────────────────────
+#
+# Descubierto a partir de un segundo HAR: la ficha de tramitación de una
+# causa (ConsultaRolTramitarAccion.do, consultada por Libro+Rol+Año) trae
+# el expediente completo (escritos, resoluciones, actuaciones y fallos).
+# La fila cuyo "Tipo" de trámite es literalmente "Sentencia" es el fallo;
+# su ícono de PDF apunta a DownloadFile.do?...&CRR_IdTramite=X&CRR_IdDocumento=Y,
+# que se puede pedir directo con la misma sesión logueada (window.open sin
+# más, sin token adicional).
+
+def _extraer_url_pdf_sentencia(html_texto):
+    """Busca, entre las filas de trámite del expediente, la que corresponde
+    al fallo (Tipo == "Sentencia") y devuelve la URL relativa de su PDF, o
+    None si no se encontró (causa sin fallo aún, o con otra nomenclatura)."""
+    filas = re.split(r'(?=<TR class="texto" id="\d+")', html_texto)
+    for fila in filas:
+        if "ShowPDFEscrito" not in fila:
+            continue
+        tds = [re.sub(r"\s+", " ", t).strip()
+               for t in re.findall(r"<TD[^>]*>(.*?)</TD>", fila, re.S)]
+        if "Sentencia" not in tds:
+            continue
+        m = re.search(r"ShowPDFEscrito\('([^']+)'\)", fila)
+        if m:
+            return m.group(1)
+    return None
+
+
+def obtener_pdf_fallo(usuario, clave, cod_libro, rol_recurso, era_recurso):
+    """Login + consulta de tramitación por Libro/Rol/Año + descarga del PDF
+    de la sentencia. Devuelve (pdf_bytes, nombre_archivo_sugerido) o lanza
+    SitcorteError si la causa no tiene un trámite de tipo "Sentencia"."""
+    s = crear_sesion()
+    login(s, usuario, clave)
+
+    try:
+        s.get(URL_MENU_TRAMITAR, timeout=30)
+    except requests.RequestException:
+        pass  # priming de sesión; si falla igual intentamos el POST
+
+    data = {
+        "TIP_Tramitacion": "1",
+        "COD_Libro": str(cod_libro),
+        "ROL_Recurso": str(rol_recurso),
+        "ERA_Recurso": str(era_recurso),
+        "ERA_RecursoCombo": str(era_recurso),
+        "libro": "",
+        "era": "",
+        "ERA_RecursoAntiguo": "",
+    }
+    try:
+        r_post = s.post(URL_CONSULTA_ROL, data=data, timeout=60)
+    except requests.RequestException as e:
+        raise SitcorteError(f"Error al consultar la tramitación de la causa: {e}")
+
+    if "usuario o contrase" in r_post.text.lower():
+        raise SitcorteError("La sesión de SITCORTE expiró durante la consulta.")
+
+    url_pdf = _extraer_url_pdf_sentencia(r_post.text)
+    if not url_pdf:
+        raise SitcorteError(
+            "No se encontró un trámite de tipo 'Sentencia' en el expediente "
+            "de esta causa (puede que aún no esté fallada, o que la causa/"
+            "materia/rol/año no coincida con la registrada).")
+
+    if not url_pdf.startswith("http"):
+        url_pdf = HOST + url_pdf
+
+    try:
+        r_pdf = s.get(url_pdf, timeout=60)
+    except requests.RequestException as e:
+        raise SitcorteError(f"Error al descargar el PDF de la sentencia: {e}")
+
+    content_type = r_pdf.headers.get("Content-Type", "")
+    if r_pdf.status_code != 200 or "pdf" not in content_type.lower():
+        raise SitcorteError(
+            f"La descarga no devolvió un PDF (HTTP {r_pdf.status_code}, "
+            f"Content-Type: {content_type}).")
+
+    nombre = f"sentencia_{cod_libro}-{rol_recurso}-{era_recurso}.pdf"
+    return r_pdf.content, nombre
 
 
 def mapear_a_fallo(raw):
