@@ -16,7 +16,7 @@ MATERIAS_PATH = os.path.join(BASE_DIR, "config_materias.json")
 CAMPOS_FALLO = [
     "rol", "caratula", "sala", "ministro_redactor", "materia",
     "tipo_recurso", "resultado", "tags", "resumen", "texto_fallo",
-    "archivo_pdf", "archivo_pdf_nombre", "fecha_fallo", "estado",
+    "votos_disidentes", "archivo_pdf", "archivo_pdf_nombre", "fecha_fallo", "estado",
 ]
 
 TIPOS_RECURSO_SUGERIDOS = [
@@ -59,6 +59,7 @@ def init_db():
             tags                TEXT,
             resumen             TEXT,
             texto_fallo         TEXT,
+            votos_disidentes    TEXT,
             archivo_pdf         TEXT,
             archivo_pdf_nombre  TEXT,
             fecha_fallo         TEXT,
@@ -76,8 +77,18 @@ def init_db():
         CREATE UNIQUE INDEX IF NOT EXISTS idx_fallos_clave_sitcorte
         ON fallos(clave_sitcorte) WHERE clave_sitcorte IS NOT NULL AND clave_sitcorte != ''
     """)
+    _migrar_columnas_faltantes(con)
     con.commit()
     con.close()
+
+
+def _migrar_columnas_faltantes(con):
+    """Agrega a una base ya existente las columnas que se sumaron después
+    de la Fase 1 (ej. votos_disidentes), sin perder los datos que ya haya."""
+    columnas_actuales = {fila["name"] for fila in con.execute("PRAGMA table_info(fallos)")}
+    for campo in CAMPOS_FALLO:
+        if campo not in columnas_actuales:
+            con.execute(f"ALTER TABLE fallos ADD COLUMN {campo} TEXT")
 
 
 # ── Materias (taxonomía editable) ──────────────────────────────────────────
@@ -169,11 +180,17 @@ def eliminar_fallo(fallo_id):
     con.close()
 
 
+def _normalizar_fila(row):
+    """NULL -> '' (columnas agregadas por una migración quedan NULL en filas
+    viejas; sin esto, Jinja las renderiza como el texto literal 'None')."""
+    return {k: ("" if v is None else v) for k, v in dict(row).items()}
+
+
 def obtener_fallo(fallo_id):
     con = get_db()
     row = con.execute("SELECT * FROM fallos WHERE id = ?", (fallo_id,)).fetchone()
     con.close()
-    return dict(row) if row else None
+    return _normalizar_fila(row) if row else None
 
 
 def listar_fallos(filtros=None):
@@ -213,7 +230,7 @@ def listar_fallos(filtros=None):
     sql += " ORDER BY COALESCE(NULLIF(fecha_fallo, ''), creado_en) DESC, id DESC"
 
     con = get_db()
-    filas = [dict(r) for r in con.execute(sql, params).fetchall()]
+    filas = [_normalizar_fila(r) for r in con.execute(sql, params).fetchall()]
     con.close()
     return filas
 

@@ -110,7 +110,7 @@
       <tr>
         <th>Rol</th><th>Carátula</th><th>Materia</th><th>Tipo recurso</th>
         <th>Resultado</th><th>Sala</th><th>Ministro Redactor</th>
-        <th>Fecha</th><th>Estado</th>
+        <th>Fecha</th><th>Estado</th><th></th>
       </tr>
     </thead>
     <tbody>
@@ -131,9 +131,10 @@
             <span class="estado estado-borrador">Borrador</span>
           {% endif %}
         </td>
+        <td>{% if f.votos_disidentes %}<span title="Con voto disidente" style="color:var(--warn);">⚠</span>{% endif %}</td>
       </tr>
       {% else %}
-      <tr><td colspan="9" style="text-align:center; color:var(--muted); padding:24px;">
+      <tr><td colspan="10" style="text-align:center; color:var(--muted); padding:24px;">
         No hay fallos que coincidan con los filtros.
       </td></tr>
       {% endfor %}

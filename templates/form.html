@@ -82,6 +82,11 @@
     </div>
 
     <div class="field">
+      <label>Votos disidentes / prevenciones (opcional)</label>
+      <textarea name="votos_disidentes" rows="4" placeholder="Ministro(a) que disiente y su fundamento, si lo hubo.">{{ fallo.votos_disidentes if fallo else '' }}</textarea>
+    </div>
+
+    <div class="field">
       <label>Texto del fallo (opcional, para búsqueda y futura generación de resumen con IA)</label>
       <textarea name="texto_fallo" rows="8" placeholder="Pegá acá el texto de la sentencia, si lo tenés.">{{ fallo.texto_fallo if fallo else '' }}</textarea>
     </div>
