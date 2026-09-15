@@ -21,9 +21,10 @@ Proyecto independiente pensado para eventualmente integrarse a `sitcorte_web`
   adjunta el PDF, precargando el texto extraído.
 - **Fase 3 — Resumen asistido por IA** — botón "Generar resumen con IA"
   en la ficha de un fallo con texto cargado: genera un resumen (hechos,
-  cuestión jurídica, decisión, argumento central) con la API de Claude a
-  partir de `texto_fallo`. Siempre se entrega como borrador en el
-  formulario de edición — nunca se guarda sin que alguien lo revise.
+  cuestión jurídica, decisión, argumento central) a partir de
+  `texto_fallo`, usando un modelo gratuito vía [OpenRouter](https://openrouter.ai).
+  Siempre se entrega como borrador en el formulario de edición — nunca se
+  guarda sin que alguien lo revise.
 
 ### Próxima fase
 
@@ -37,14 +38,25 @@ Proyecto independiente pensado para eventualmente integrarse a `sitcorte_web`
 pip install -r requirements.txt
 ```
 
-Para el resumen con IA (Fase 3) hace falta una API key de Anthropic:
+Para el resumen con IA (Fase 3) hace falta una API key gratuita de
+[OpenRouter](https://openrouter.ai/keys):
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export OPENROUTER_API_KEY=sk-or-...
 ```
 
-Sin esa variable, todo el resto de la app funciona igual — el botón de
-generar resumen simplemente muestra un error pidiendo configurarla.
+Por default usa `meta-llama/llama-3.3-70b-instruct:free`. Los modelos
+gratuitos de OpenRouter cambian con el tiempo (y tienen límites de uso
+diarios/por minuto) — revisá cuál está disponible en
+https://openrouter.ai/models?max_price=0 y, si hace falta, apuntá a otro:
+
+```bash
+export OPENROUTER_MODEL=otro-modelo:free
+```
+
+Sin `OPENROUTER_API_KEY`, todo el resto de la app funciona igual — el
+botón de generar resumen simplemente muestra un error pidiendo
+configurarla.
 
 ## Ejecución
 

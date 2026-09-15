@@ -2,10 +2,21 @@
 """Resumen de la causa asistido por IA (Fase 3), a partir del texto del
 fallo ya extraído (manual o vía "Buscar PDF en SITCORTE"). El resultado
 siempre se entrega como borrador para revisar/editar antes de guardar —
-nunca se persiste solo, sin que alguien lo confirme."""
-import anthropic
+nunca se persiste solo, sin que alguien lo confirme.
 
-MODEL = "claude-opus-5"
+Usa OpenRouter (https://openrouter.ai) en vez de una cuenta propia de un
+proveedor de IA — OpenRouter da acceso a modelos gratuitos con una API
+compatible con OpenAI (endpoint /chat/completions). La lista de modelos
+gratuitos cambia con el tiempo; confirmá el actual en
+https://openrouter.ai/models?max_price=0 y ajustá OPENROUTER_MODEL si hace
+falta.
+"""
+import os
+
+import requests
+
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL = os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 
 MIN_LARGO_TEXTO = 200
 
@@ -39,6 +50,12 @@ def generar_resumen(texto_fallo, materia="", tipo_recurso="", resultado="", cara
             "El texto del fallo es muy corto o está vacío (puede que el PDF sea un "
             "escaneo sin capa de texto). Completá o corregí texto_fallo antes de generar el resumen.")
 
+    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        raise IAError(
+            "Falta configurar OPENROUTER_API_KEY (conseguí una gratis en "
+            "https://openrouter.ai/keys) antes de generar el resumen.")
+
     contexto = "\n".join(
         f"{etiqueta}: {valor}"
         for etiqueta, valor in [
@@ -53,28 +70,47 @@ def generar_resumen(texto_fallo, materia="", tipo_recurso="", resultado="", cara
     )
 
     try:
-        client = anthropic.Anthropic()
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=2000,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": mensaje_usuario}],
+        r = requests.post(
+            OPENROUTER_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": MODEL,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": mensaje_usuario},
+                ],
+                "max_tokens": 2000,
+            },
+            timeout=90,
         )
-    except anthropic.AuthenticationError:
+    except requests.RequestException as e:
+        raise IAError(f"No se pudo conectar con OpenRouter: {e}")
+
+    if r.status_code == 401:
+        raise IAError("OPENROUTER_API_KEY inválida o vencida.")
+    if r.status_code == 429:
         raise IAError(
-            "No se pudo autenticar con la API de Claude — falta configurar "
-            "ANTHROPIC_API_KEY (o el perfil de `ant auth login`) en esta máquina.")
-    except anthropic.RateLimitError:
-        raise IAError("Se alcanzó el límite de uso de la API de Claude — probá de nuevo en un momento.")
-    except anthropic.APIStatusError as e:
-        raise IAError(f"Error de la API de Claude ({e.status_code}): {e.message}")
-    except anthropic.APIConnectionError as e:
-        raise IAError(f"No se pudo conectar con la API de Claude: {e}")
+            f"Se alcanzó el límite de uso del modelo gratuito ({MODEL}) en OpenRouter — "
+            "probá de nuevo en un momento, o cambiá OPENROUTER_MODEL por otro modelo gratuito.")
+    if r.status_code != 200:
+        raise IAError(f"Error de OpenRouter (HTTP {r.status_code}): {r.text[:300]}")
 
-    if response.stop_reason == "refusal":
-        raise IAError("El modelo no pudo generar el resumen para este texto.")
+    try:
+        data = r.json()
+    except ValueError:
+        raise IAError("OpenRouter devolvió una respuesta que no se pudo interpretar.")
 
-    texto = "\n".join(b.text for b in response.content if b.type == "text").strip()
+    if data.get("error"):
+        raise IAError(f"Error de OpenRouter: {data['error'].get('message', data['error'])}")
+
+    choices = data.get("choices") or []
+    if not choices:
+        raise IAError("OpenRouter no devolvió una respuesta utilizable.")
+
+    texto = ((choices[0].get("message") or {}).get("content") or "").strip()
     if not texto:
         raise IAError("El modelo no devolvió texto para el resumen.")
     return texto
