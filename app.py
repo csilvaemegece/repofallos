@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 import fallos_core as fc
 import sitcorte_import as si
 import pdf_text
+import ia_resumen
 
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -291,6 +292,36 @@ def buscar_pdf_fallo(fallo_id):
                            error=None if puede_buscar else
                            "Esta causa no tiene materia y rol en formato 'número-año' — "
                            "completalos editando el fallo antes de buscar el PDF.")
+
+
+# ── Resumen asistido por IA (Fase 3) ────────────────────────────────────────
+
+@app.route("/fallos/<int:fallo_id>/generar-resumen", methods=["POST"])
+def generar_resumen_ia(fallo_id):
+    fallo = fc.obtener_fallo(fallo_id)
+    if not fallo:
+        abort(404)
+
+    try:
+        resumen_ia = ia_resumen.generar_resumen(
+            fallo.get("texto_fallo", ""), materia=fallo.get("materia", ""),
+            tipo_recurso=fallo.get("tipo_recurso", ""), resultado=fallo.get("resultado", ""),
+            caratula=fallo.get("caratula", ""),
+        )
+    except ia_resumen.IAError as e:
+        return render_template("detalle.html", active_menu="fallos", fallo=fallo, error=str(e))
+
+    # Borrador editable: no se guarda solo — se muestra en el form de edición
+    # para que alguien lo revise (y ajuste si hace falta) antes de "Guardar".
+    fallo_borrador = dict(fallo)
+    fallo_borrador["resumen"] = resumen_ia
+    return render_template(
+        "form.html", active_menu="fallos", modo="editar", fallo=fallo_borrador,
+        materias=fc.cargar_materias(),
+        tipos_recurso_sugeridos=fc.TIPOS_RECURSO_SUGERIDOS,
+        resultados_sugeridos=fc.RESULTADOS_SUGERIDOS, estados=fc.ESTADOS,
+        aviso_ia="Resumen generado con IA — revisalo y ajustalo antes de guardar.",
+    )
 
 
 if __name__ == "__main__":
