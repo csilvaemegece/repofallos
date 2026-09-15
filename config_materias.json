@@ -1,12 +1,20 @@
 {
   "materias": [
     "Civil",
-    "Penal",
-    "Laboral",
     "Familia",
+    "Laboral - Cobranza",
+    "Penal",
+    "Contencioso Administrativo",
+    "Tributario Y Aduanero",
     "Protección",
     "Amparo",
-    "Contencioso-Administrativo",
-    "Otros"
+    "Policia Local",
+    "Exhorto",
+    "Ley De Navegación",
+    "Ambiental",
+    "Traspaso Corte Marcial",
+    "Ministro Primera Instancia Y Fuero",
+    "Com. Lib. Cond.",
+    "Pleno Y Otros Adm"
   ]
 }

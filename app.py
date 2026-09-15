@@ -8,6 +8,7 @@ from flask import (Flask, render_template, request, redirect, url_for,
 from werkzeug.utils import secure_filename
 
 import fallos_core as fc
+import sitcorte_import as si
 
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -154,6 +155,63 @@ def materias():
         return redirect(url_for("materias"))
     return render_template("materias.html", active_menu="materias",
                            materias=fc.cargar_materias())
+
+
+# ── Importar automáticamente desde SITCORTE ─────────────────────────────────
+
+@app.route("/importar")
+def importar_form():
+    return render_template(
+        "importar.html", active_menu="importar",
+        materias=sorted(si.MATERIAS_COD_LIBRO), salas=sorted(si.SALAS_COD),
+        resultados=sorted(si.ESTADOS_FALLO_COD), error=None, resumen=None,
+        fec_desde="", fec_hasta="",
+    )
+
+
+@app.route("/importar/ejecutar", methods=["POST"])
+def importar_ejecutar():
+    usuario = request.form.get("usuario", "").strip()
+    clave = request.form.get("clave", "")
+    fec_desde = request.form.get("fec_desde", "").strip()
+    fec_hasta = request.form.get("fec_hasta", "").strip()
+    materia_sel = request.form.get("materia", "")
+    sala_sel = request.form.get("sala", "")
+    resultado_sel = request.form.get("resultado", "")
+
+    ctx = dict(
+        active_menu="importar",
+        materias=sorted(si.MATERIAS_COD_LIBRO), salas=sorted(si.SALAS_COD),
+        resultados=sorted(si.ESTADOS_FALLO_COD),
+        fec_desde=fec_desde, fec_hasta=fec_hasta,
+    )
+
+    if not usuario or not clave or not fec_desde or not fec_hasta:
+        return render_template("importar.html", error="Completá usuario, clave y ambas fechas.",
+                               resumen=None, **ctx)
+
+    try:
+        filas = si.consultar_fallos(
+            usuario, clave, fec_desde, fec_hasta,
+            cod_sala=si.SALAS_COD.get(sala_sel, "0"),
+            cod_libro=si.MATERIAS_COD_LIBRO.get(materia_sel, ""),
+            cod_est_fallo=si.ESTADOS_FALLO_COD.get(resultado_sel, "0"),
+        )
+    except si.SitcorteError as e:
+        return render_template("importar.html", error=str(e), resumen=None, **ctx)
+
+    nuevos, duplicados, ids_nuevos = 0, 0, []
+    for raw in filas:
+        data = si.mapear_a_fallo(raw)
+        fallo_id, creado = fc.importar_fallo(data)
+        if creado:
+            nuevos += 1
+            ids_nuevos.append(fallo_id)
+        else:
+            duplicados += 1
+
+    resumen = {"total": len(filas), "nuevos": nuevos, "duplicados": duplicados}
+    return render_template("importar.html", error=None, resumen=resumen, **ctx)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Importar desde SITCORTE{% endblock %}
+{% block breadcrumb %}Importar desde SITCORTE{% endblock %}
+
+{% block content %}
+<div class="page-title">Importar desde SITCORTE</div>
+<div class="page-sub">
+  Trae causas ya falladas del informe "Recursos Fallados" y las crea como
+  <strong>borrador</strong> (rol, carátula, sala, ministro redactor, tipo de
+  recurso, resultado y fecha). El texto/resumen del fallo se completa
+  después, a mano. Las credenciales solo se usan para esta consulta, no se
+  guardan.
+</div>
+
+{% if error %}
+  <div class="alert alert-error">⚠ {{ error }}</div>
+{% endif %}
+
+{% if resumen %}
+  <div class="card" style="max-width:640px; margin-bottom:22px;">
+    <div style="font-weight:600; margin-bottom:6px;">Importación completada</div>
+    <div style="font-size:.88rem; color:var(--text); line-height:1.7;">
+      <span class="badge">{{ resumen.total }}</span> causas encontradas en SITCORTE ·
+      <strong style="color:var(--success);">{{ resumen.nuevos }}</strong> nuevas cargadas como borrador ·
+      <strong style="color:var(--muted);">{{ resumen.duplicados }}</strong> ya existían (omitidas)
+    </div>
+    <a href="/fallos?estado=borrador" class="btn btn-primary" style="margin-top:14px;">Ver borradores</a>
+  </div>
+{% endif %}
+
+<div class="card" style="max-width:640px;">
+  <form method="POST" action="/importar/ejecutar">
+    <div class="field-row">
+      <div>
+        <label>Usuario SITCORTE</label>
+        <input type="text" name="usuario" autocomplete="username" required>
+      </div>
+      <div>
+        <label>Contraseña</label>
+        <input type="text" name="clave" autocomplete="current-password" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label>Desde (dd/mm/yyyy)</label>
+        <input type="text" name="fec_desde" value="{{ fec_desde }}" placeholder="01/09/2026" required>
+      </div>
+      <div>
+        <label>Hasta (dd/mm/yyyy)</label>
+        <input type="text" name="fec_hasta" value="{{ fec_hasta }}" placeholder="15/09/2026" required>
+      </div>
+    </div>
+    <div class="field-row-3">
+      <div>
+        <label>Materia (opcional)</label>
+        <select name="materia">
+          <option value="">Todas</option>
+          {% for m in materias %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Sala (opcional)</label>
+        <select name="sala">
+          <option value="">Todas</option>
+          {% for s in salas %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Resultado (opcional)</label>
+        <select name="resultado">
+          <option value="">Todos</option>
+          {% for r in resultados %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Importar</button>
+  </form>
+</div>
+{% endblock %}

@@ -25,8 +25,9 @@ TIPOS_RECURSO_SUGERIDOS = [
 ]
 
 RESULTADOS_SUGERIDOS = [
-    "Confirma", "Revoca", "Modifica", "Acoge", "Acoge Parcialmente",
-    "Rechaza", "Declara Inadmisible", "Declara Desierto", "Otro",
+    "Confirma", "Revoca", "Aprueba", "Admisibilidad", "Resuelta", "Fallado",
+    "C.Mod.Fallo 1ªInst.", "C.Fallo. con 3 Consi", "Acogida", "Rechazada",
+    "Abandonado",
 ]
 
 ESTADOS = ["borrador", "publicado"]
@@ -62,6 +63,7 @@ def init_db():
             archivo_pdf_nombre  TEXT,
             fecha_fallo         TEXT,
             estado              TEXT NOT NULL DEFAULT 'borrador',
+            clave_sitcorte      TEXT,
             creado_en           TEXT NOT NULL,
             actualizado_en      TEXT NOT NULL
         )
@@ -70,6 +72,10 @@ def init_db():
     con.execute("CREATE INDEX IF NOT EXISTS idx_fallos_resultado ON fallos(resultado)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_fallos_sala      ON fallos(sala)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_fallos_estado    ON fallos(estado)")
+    con.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_fallos_clave_sitcorte
+        ON fallos(clave_sitcorte) WHERE clave_sitcorte IS NOT NULL AND clave_sitcorte != ''
+    """)
     con.commit()
     con.close()
 
@@ -118,6 +124,42 @@ def actualizar_fallo(fallo_id, data):
     )
     con.commit()
     con.close()
+
+
+def importar_fallo(data):
+    """Inserta un fallo proveniente de una fuente externa (SITCORTE),
+    evitando duplicados por 'clave_sitcorte'. Devuelve (fallo_id, creado)."""
+    clave = (data.get("clave_sitcorte") or "").strip()
+    con = get_db()
+    if clave:
+        existente = con.execute(
+            "SELECT id FROM fallos WHERE clave_sitcorte = ?", (clave,)
+        ).fetchone()
+        if existente:
+            con.close()
+            return existente["id"], False
+
+    ahora = _now_iso()
+    campos = CAMPOS_FALLO + ["clave_sitcorte", "creado_en", "actualizado_en"]
+    valores = [data.get(c, "") for c in CAMPOS_FALLO] + [clave, ahora, ahora]
+    placeholders = ", ".join("?" for _ in campos)
+    try:
+        cur = con.execute(
+            f"INSERT INTO fallos ({', '.join(campos)}) VALUES ({placeholders})",
+            valores,
+        )
+        con.commit()
+        nuevo_id = cur.lastrowid
+        creado = True
+    except sqlite3.IntegrityError:
+        # Carrera con otra importación concurrente sobre la misma clave.
+        existente = con.execute(
+            "SELECT id FROM fallos WHERE clave_sitcorte = ?", (clave,)
+        ).fetchone()
+        nuevo_id = existente["id"] if existente else None
+        creado = False
+    con.close()
+    return nuevo_id, creado
 
 
 def eliminar_fallo(fallo_id):
