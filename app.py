@@ -28,9 +28,10 @@ def _datos_form():
     return data
 
 
-def _guardar_pdf_si_viene(data, pdf_actual=None, pdf_actual_nombre=None):
-    """Si llegó un PDF nuevo en el form, lo guarda y actualiza data; si no,
-    conserva el que ya tenía el fallo (edición sin reemplazar archivo)."""
+def _guardar_pdf_si_viene(data, pdf_actual=None, pdf_actual_nombre=None, pdf_origen_actual=None):
+    """Si llegó un PDF nuevo en el form, lo guarda y actualiza data (queda
+    marcado como subido a mano); si no, conserva el que ya tenía el fallo
+    (edición sin reemplazar archivo)."""
     archivo = request.files.get("archivo_pdf")
     if archivo and archivo.filename:
         nombre_seguro = secure_filename(archivo.filename)
@@ -38,16 +39,19 @@ def _guardar_pdf_si_viene(data, pdf_actual=None, pdf_actual_nombre=None):
         archivo.save(os.path.join(UPLOAD_DIR, nombre_disco))
         data["archivo_pdf"] = nombre_disco
         data["archivo_pdf_nombre"] = nombre_seguro
+        data["pdf_origen"] = "manual"
     else:
         data["archivo_pdf"] = pdf_actual or ""
         data["archivo_pdf_nombre"] = pdf_actual_nombre or ""
+        data["pdf_origen"] = pdf_origen_actual or ""
     return data
 
 
 def _adjuntar_pdf_y_texto(fallo_id, datos_base, pdf_bytes, nombre_sugerido):
     """Guarda el PDF en disco, completa texto_fallo (si estaba vacío)
     extrayéndolo del PDF, y persiste el fallo. datos_base debe traer los
-    campos actuales del fallo (CAMPOS_FALLO) para no perder lo ya cargado."""
+    campos actuales del fallo (CAMPOS_FALLO) para no perder lo ya cargado.
+    Queda marcado como proveniente de SITCORTE (se puede volver a pedir)."""
     nombre_disco = f"{uuid.uuid4().hex}_{nombre_sugerido}"
     with open(os.path.join(UPLOAD_DIR, nombre_disco), "wb") as f:
         f.write(pdf_bytes)
@@ -55,9 +59,36 @@ def _adjuntar_pdf_y_texto(fallo_id, datos_base, pdf_bytes, nombre_sugerido):
     data = dict(datos_base)
     data["archivo_pdf"] = nombre_disco
     data["archivo_pdf_nombre"] = nombre_sugerido
+    data["pdf_origen"] = "sitcorte"
     if not data.get("texto_fallo"):
         data["texto_fallo"] = pdf_text.extraer_texto(pdf_bytes)
     fc.actualizar_fallo(fallo_id, data)
+    return data
+
+
+def _resumen_es_real(resumen):
+    """False para vacío o para la nota placeholder que deja la importación
+    automática (todavía no es un resumen redactado de verdad)."""
+    resumen = (resumen or "").strip()
+    return bool(resumen) and not resumen.startswith(fc.MARCA_RESUMEN_AUTOIMPORTADO)
+
+
+def _limpiar_pdf_si_corresponde(data):
+    """Si el fallo ya tiene resumen (real) y texto_fallo, y el PDF adjunto
+    vino de SITCORTE (no fue subido a mano), se borra del disco — se puede
+    volver a pedir con "Buscar PDF en SITCORTE" cuando haga falta. Se llama
+    solo al guardar el formulario, nunca justo después de traerlo, para no
+    borrar un PDF recién pedido antes de poder verlo/descargarlo."""
+    if (_resumen_es_real(data.get("resumen"))
+            and (data.get("texto_fallo") or "").strip()
+            and data.get("pdf_origen") == "sitcorte"
+            and data.get("archivo_pdf")):
+        try:
+            os.remove(os.path.join(UPLOAD_DIR, data["archivo_pdf"]))
+        except OSError:
+            pass
+        data["archivo_pdf"] = ""
+        data["archivo_pdf_nombre"] = ""
     return data
 
 
@@ -108,6 +139,7 @@ def nuevo_fallo():
     if request.method == "POST":
         data = _datos_form()
         data = _guardar_pdf_si_viene(data)
+        data = _limpiar_pdf_si_corresponde(data)
         nuevo_id = fc.crear_fallo(data)
         return redirect(url_for("detalle_fallo", fallo_id=nuevo_id))
     return render_template(
@@ -151,7 +183,9 @@ def editar_fallo(fallo_id):
         data = _guardar_pdf_si_viene(
             data, pdf_actual=fallo.get("archivo_pdf"),
             pdf_actual_nombre=fallo.get("archivo_pdf_nombre"),
+            pdf_origen_actual=fallo.get("pdf_origen"),
         )
+        data = _limpiar_pdf_si_corresponde(data)
         fc.actualizar_fallo(fallo_id, data)
         return redirect(url_for("detalle_fallo", fallo_id=fallo_id))
     return render_template(

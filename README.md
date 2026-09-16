@@ -29,6 +29,11 @@ Proyecto independiente pensado para eventualmente integrarse a `sitcorte_web`
 - **Votos disidentes** — campo propio para el voto de minoría o
   prevención, si lo hubo, con su propia sección destacada en la ficha del
   fallo.
+- **Publicación automática y limpieza de PDF** — al guardar, si el fallo
+  ya tiene resumen y tags, pasa a estado "Publicado" solo. Y si además
+  tiene el texto del fallo cargado y el PDF vino de SITCORTE (no subido a
+  mano), el archivo se borra del servidor para ahorrar espacio — siempre
+  se puede volver a pedir con "Buscar PDF en SITCORTE".
 
 ### Próxima fase
 

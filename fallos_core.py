@@ -16,8 +16,13 @@ MATERIAS_PATH = os.path.join(BASE_DIR, "config_materias.json")
 CAMPOS_FALLO = [
     "rol", "caratula", "sala", "ministro_redactor", "materia",
     "tipo_recurso", "resultado", "tags", "resumen", "texto_fallo",
-    "votos_disidentes", "archivo_pdf", "archivo_pdf_nombre", "fecha_fallo", "estado",
+    "votos_disidentes", "archivo_pdf", "archivo_pdf_nombre", "pdf_origen",
+    "fecha_fallo", "estado",
 ]
+
+# Marca el resumen auto-generado en la importación (sitcorte_import.mapear_a_fallo)
+# como "no es un resumen real todavía", para no confundirlo con uno redactado.
+MARCA_RESUMEN_AUTOIMPORTADO = "[Auto-importado de SITCORTE"
 
 TIPOS_RECURSO_SUGERIDOS = [
     "Apelación", "Casación en la Forma", "Casación en el Fondo",
@@ -62,6 +67,7 @@ def init_db():
             votos_disidentes    TEXT,
             archivo_pdf         TEXT,
             archivo_pdf_nombre  TEXT,
+            pdf_origen          TEXT,
             fecha_fallo         TEXT,
             estado              TEXT NOT NULL DEFAULT 'borrador',
             clave_sitcorte      TEXT,
