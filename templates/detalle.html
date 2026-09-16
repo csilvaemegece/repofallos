@@ -52,12 +52,12 @@
       Generar Prompt
     </button>
     <div style="font-size:.78rem; color:var(--muted); margin-top:8px;">
-      Copia un prompt con el texto del fallo — pegalo en Copilot para pedirle el resumen
-      (incluye votos disidentes) y después cargá el resultado acá abajo con "Editar".
+      Copia un prompt con el texto del fallo — péguelo en Copilot para pedir el resumen
+      (incluye votos disidentes) y después cargue el resultado aquí abajo con "Editar".
     </div>
   {% else %}
     <div style="font-size:.8rem; color:var(--muted);">
-      Cargá el texto del fallo (a mano o con "Buscar PDF en SITCORTE") para poder generar el prompt.
+      Cargue el texto del fallo (a mano o con "Buscar PDF en SITCORTE") para poder generar el prompt.
     </div>
   {% endif %}
 </div>
@@ -142,7 +142,7 @@ function copiarConFallback(el, avisar) {
     document.execCommand('copy');
     avisar('✓ Copiado al portapapeles');
   } catch (e) {
-    avisar('No se pudo copiar — seleccionalo a mano');
+    avisar('No se pudo copiar — selecciónelo a mano');
   }
   el.hidden = true;
 }

@@ -2,7 +2,7 @@
 """Extracción de texto de un PDF de sentencia (best-effort, para dejar
 texto_fallo pre-cargado y listo para el resumen asistido por IA de la
 Fase 3). Si el PDF es un escaneo sin capa de texto, devuelve cadena vacía
-— no hacemos OCR acá."""
+— no se hace OCR aquí."""
 import io
 import re
 
@@ -13,7 +13,7 @@ def _tolerante(txt):
     """Arma un patrón que matchea `txt` letra por letra, tolerando
     cualquier espacio/salto de línea (incluso cero) entre medio — la
     extracción de PDFs con columnas suele pegar o separar palabras de forma
-    errática, así que un match literal o por palabras no sirve acá."""
+    errática, así que un match literal o por palabras no sirve aquí."""
     return r"\s*".join(re.escape(c) for c in txt)
 
 

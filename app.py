@@ -226,7 +226,7 @@ def importar_ejecutar():
     )
 
     if not usuario or not clave or not fec_desde or not fec_hasta:
-        return render_template("importar.html", error="Completá usuario, clave y ambas fechas.",
+        return render_template("importar.html", error="Complete usuario, clave y ambas fechas.",
                                resumen=None, **ctx)
 
     try:
@@ -285,11 +285,11 @@ def buscar_pdf_fallo(fallo_id):
         clave = request.form.get("clave", "")
         if not puede_buscar:
             error = ("No se pudo determinar Libro/Rol/Año de esta causa "
-                      "(completá materia y rol con el formato '123-2025' antes de buscar).")
+                      "(complete materia y rol con el formato '123-2025' antes de buscar).")
             return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo, error=error)
         if not usuario or not clave:
             return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo,
-                                   error="Completá usuario y clave de SITCORTE.")
+                                   error="Complete usuario y clave de SITCORTE.")
         try:
             pdf_bytes, nombre_sugerido = si.obtener_pdf_fallo(usuario, clave, cod_libro, numero, anio)
         except si.SitcorteError as e:
@@ -302,7 +302,7 @@ def buscar_pdf_fallo(fallo_id):
     return render_template("buscar_pdf.html", active_menu="fallos", fallo=fallo,
                            error=None if puede_buscar else
                            "Esta causa no tiene materia y rol en formato 'número-año' — "
-                           "completalos editando el fallo antes de buscar el PDF.")
+                           "complételos editando el fallo antes de buscar el PDF.")
 
 
 if __name__ == "__main__":
