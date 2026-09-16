@@ -109,7 +109,18 @@ def guardar_materias(lista):
 
 # ── CRUD de fallos ──────────────────────────────────────────────────────────
 
+def _aplicar_regla_publicacion(data):
+    """Un fallo con resumen y tags (palabras clave) ya cargados se considera
+    listo y pasa a 'publicado' automáticamente, sin importar el estado que
+    se haya enviado en el formulario."""
+    data = dict(data)
+    if (data.get("resumen") or "").strip() and (data.get("tags") or "").strip():
+        data["estado"] = "publicado"
+    return data
+
+
 def crear_fallo(data):
+    data = _aplicar_regla_publicacion(data)
     con = get_db()
     ahora = _now_iso()
     campos = CAMPOS_FALLO + ["creado_en", "actualizado_en"]
@@ -126,6 +137,7 @@ def crear_fallo(data):
 
 
 def actualizar_fallo(fallo_id, data):
+    data = _aplicar_regla_publicacion(data)
     con = get_db()
     sets = ", ".join(f"{c} = ?" for c in CAMPOS_FALLO)
     valores = [data.get(c, "") for c in CAMPOS_FALLO] + [_now_iso(), fallo_id]
@@ -140,6 +152,7 @@ def actualizar_fallo(fallo_id, data):
 def importar_fallo(data):
     """Inserta un fallo proveniente de una fuente externa (SITCORTE),
     evitando duplicados por 'clave_sitcorte'. Devuelve (fallo_id, creado)."""
+    data = _aplicar_regla_publicacion(data)
     clave = (data.get("clave_sitcorte") or "").strip()
     con = get_db()
     if clave:

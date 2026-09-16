@@ -110,11 +110,14 @@
       </div>
       <div>
         <label>Estado</label>
-        <select name="estado">
+        <select name="estado" id="campoEstado">
           {% for e in estados %}
             <option value="{{ e }}" {% if fallo and fallo.estado == e %}selected{% endif %}>{{ e|capitalize }}</option>
           {% endfor %}
         </select>
+        <div style="font-size:.72rem; color:var(--muted); margin-top:4px;">
+          Con resumen y tags cargados, pasa a "Publicado" automáticamente al guardar.
+        </div>
       </div>
     </div>
 
@@ -197,7 +200,17 @@ function rellenarDesdeCopilot() {
     campoTags.value = combinadas.join(', ');
   }
 
+  _actualizarEstadoSegunResumenYTags();
   avisar('✓ Campos completados');
+}
+
+function _actualizarEstadoSegunResumenYTags() {
+  const resumen = document.querySelector('textarea[name="resumen"]').value.trim();
+  const tags = document.querySelector('input[name="tags"]').value.trim();
+  const campoEstado = document.getElementById('campoEstado');
+  if (resumen && tags && campoEstado) {
+    campoEstado.value = 'publicado';
+  }
 }
 </script>
 {% endblock %}
