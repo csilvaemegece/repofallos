@@ -213,8 +213,8 @@ def listar_fallos(filtros=None):
 
     if filtros.get("q"):
         q = f"%{filtros['q']}%"
-        where.append("(rol LIKE ? OR caratula LIKE ? OR resumen LIKE ? OR texto_fallo LIKE ?)")
-        params += [q, q, q, q]
+        where.append("(rol LIKE ? OR caratula LIKE ? OR resumen LIKE ? OR texto_fallo LIKE ? OR tags LIKE ?)")
+        params += [q, q, q, q, q]
 
     if filtros.get("desde"):
         where.append("fecha_fallo >= ?")

@@ -21,8 +21,13 @@ Decisión: (qué resolvió la Corte y el resultado concreto)
 Argumento central: (el razonamiento principal que sostiene la decisión)
 Votos disidentes: (si algún ministro o ministra votó en contra o hizo una prevención, \
 resumí su fundamento; si no hubo, escribí "No hubo votos disidentes")
+Palabras clave: (entre 5 y 8 palabras o frases cortas para buscar esta causa después — \
+instituciones jurídicas, materias, normas citadas, tipo de conflicto, etc. Ponelas en \
+una sola línea, separadas por coma, sin numerar ni viñetas, listas para pegar tal cual \
+en un campo de tags)
 
-Sé conciso — no más de 300 palabras en total. Español formal, sin lenguaje grandilocuente."""
+Sé conciso — no más de 300 palabras en total (sin contar las palabras clave). Español \
+formal, sin lenguaje grandilocuente."""
 
 
 class PromptError(Exception):
