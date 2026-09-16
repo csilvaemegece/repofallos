@@ -7,12 +7,6 @@
 <div class="page-title">{% if modo == 'nuevo' %}Cargar Fallo{% else %}Editar Fallo{% endif %}</div>
 <div class="page-sub">Completá la metadata, clasificá el fallo y agregá un resumen de la causa.</div>
 
-{% if aviso_ia %}
-  <div class="alert" style="background:#0e2a1f; border:1px solid #1f5c3f; color:var(--success); max-width:820px;">
-    ✨ {{ aviso_ia }}
-  </div>
-{% endif %}
-
 <div class="card" style="max-width:820px;">
   <form method="POST" enctype="multipart/form-data"
         action="{% if modo == 'nuevo' %}/fallos/nuevo{% else %}/fallos/{{ fallo.id }}/editar{% endif %}">

@@ -19,12 +19,16 @@ Proyecto independiente pensado para eventualmente integrarse a `sitcorte_web`
 - **Buscar PDF por rol** (botón en la ficha de un fallo) — dado un fallo
   con materia+rol, busca su sentencia en la tramitación de SITCORTE y
   adjunta el PDF, precargando el texto extraído.
-- **Fase 3 — Resumen asistido por IA** — botón "Generar resumen con IA"
-  en la ficha de un fallo con texto cargado: genera un resumen (hechos,
-  cuestión jurídica, decisión, argumento central) a partir de
-  `texto_fallo`, usando un modelo gratuito vía [OpenRouter](https://openrouter.ai).
-  Siempre se entrega como borrador en el formulario de edición — nunca se
-  guarda sin que alguien lo revise.
+- **Fase 3 — Prompt para resumen con IA** — botón "Generar Prompt" en la
+  ficha de un fallo con texto cargado: arma un prompt (con el texto del
+  fallo + instrucciones para estructurar hechos, cuestión jurídica,
+  decisión, argumento central y votos disidentes) y lo copia al
+  portapapeles. No se llama a ninguna API de IA desde el servidor — el
+  prompt se pega a mano en Copilot (la IA autorizada) y el resultado se
+  revisa y carga en el formulario de edición.
+- **Votos disidentes** — campo propio para el voto de minoría o
+  prevención, si lo hubo, con su propia sección destacada en la ficha del
+  fallo.
 
 ### Próxima fase
 
@@ -38,25 +42,9 @@ Proyecto independiente pensado para eventualmente integrarse a `sitcorte_web`
 pip install -r requirements.txt
 ```
 
-Para el resumen con IA (Fase 3) hace falta una API key gratuita de
-[OpenRouter](https://openrouter.ai/keys):
-
-```bash
-export OPENROUTER_API_KEY=sk-or-...
-```
-
-Por default usa `meta-llama/llama-3.3-70b-instruct:free`. Los modelos
-gratuitos de OpenRouter cambian con el tiempo (y tienen límites de uso
-diarios/por minuto) — revisá cuál está disponible en
-https://openrouter.ai/models?max_price=0 y, si hace falta, apuntá a otro:
-
-```bash
-export OPENROUTER_MODEL=otro-modelo:free
-```
-
-Sin `OPENROUTER_API_KEY`, todo el resto de la app funciona igual — el
-botón de generar resumen simplemente muestra un error pidiendo
-configurarla.
+El resumen con IA no necesita ninguna API key ni configuración: el botón
+"Generar Prompt" arma el texto y lo copia al portapapeles directo en el
+navegador, para pegarlo en Copilot a mano.
 
 ## Ejecución
 
