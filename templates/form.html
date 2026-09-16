@@ -7,6 +7,24 @@
 <div class="page-title">{% if modo == 'nuevo' %}Cargar Fallo{% else %}Editar Fallo{% endif %}</div>
 <div class="page-sub">Complete la metadata, clasifique el fallo y agregue un resumen de la causa.</div>
 
+{% if modo == 'editar' %}
+<div class="card" style="max-width:820px; margin-bottom:18px;">
+  <label>Pegar respuesta de Copilot (opcional)</label>
+  <textarea id="respuestaCopilot" rows="6"
+            placeholder="Pegue aquí la respuesta completa que le dio Copilot al prompt generado (Hechos / Cuestión jurídica / Decisión / Argumento central / Votos disidentes / Palabras clave)."></textarea>
+  <button type="button" class="btn btn-ghost" id="btnRellenar" onclick="rellenarDesdeCopilot()" style="margin-top:10px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Completar resumen, voto disidente y tags
+  </button>
+  <div style="font-size:.78rem; color:var(--muted); margin-top:8px;">
+    Distribuye la respuesta en los campos de abajo — revíselos antes de guardar.
+  </div>
+</div>
+{% endif %}
+
 <div class="card" style="max-width:820px;">
   <form method="POST" enctype="multipart/form-data"
         action="{% if modo == 'nuevo' %}/fallos/nuevo{% else %}/fallos/{{ fallo.id }}/editar{% endif %}">
@@ -106,4 +124,80 @@
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function _extraerSeccionCopilot(texto, etiquetas, siguientes) {
+  const patronEtiquetas = etiquetas.join('|');
+  const patronSiguientes = siguientes.length ? siguientes.join('|') : '(?![\\s\\S])';
+  const re = new RegExp(
+    '(?:' + patronEtiquetas + ')\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:' + patronSiguientes + ')\\s*:|$)',
+    'i'
+  );
+  const m = texto.match(re);
+  return m ? m[1].trim() : '';
+}
+
+function rellenarDesdeCopilot() {
+  const btn = document.getElementById('btnRellenar');
+  const avisar = (texto) => {
+    const original = btn.innerHTML;
+    btn.innerHTML = texto;
+    setTimeout(() => { btn.innerHTML = original; }, 2500);
+  };
+
+  let texto = document.getElementById('respuestaCopilot').value;
+  if (!texto.trim()) {
+    avisar('Pegue la respuesta de Copilot primero');
+    return;
+  }
+  // Markdown que a veces agrega el chat (negrita, encabezados) — se saca antes de parsear.
+  texto = texto.replace(/\*\*/g, '').replace(/^#+\s*/gm, '');
+
+  const HECHOS = ['Hechos'];
+  const CUESTION = ['Cuesti[oó]n\\s+jur[ií]dica'];
+  const DECISION = ['Decisi[oó]n'];
+  const ARGUMENTO = ['Argumento\\s+central'];
+  const VOTOS = ['Votos?\\s+disidentes?'];
+  const PALABRAS = ['Palabras\\s+clave', 'Etiquetas', 'Tags'];
+  const TODAS = [...HECHOS, ...CUESTION, ...DECISION, ...ARGUMENTO, ...VOTOS, ...PALABRAS];
+
+  const hechos = _extraerSeccionCopilot(texto, HECHOS, TODAS.filter(e => !HECHOS.includes(e)));
+  const cuestion = _extraerSeccionCopilot(texto, CUESTION, TODAS.filter(e => !CUESTION.includes(e)));
+  const decision = _extraerSeccionCopilot(texto, DECISION, TODAS.filter(e => !DECISION.includes(e)));
+  const argumento = _extraerSeccionCopilot(texto, ARGUMENTO, TODAS.filter(e => !ARGUMENTO.includes(e)));
+  const votos = _extraerSeccionCopilot(texto, VOTOS, TODAS.filter(e => !VOTOS.includes(e)));
+  const palabrasClave = _extraerSeccionCopilot(texto, PALABRAS, []);
+
+  if (!hechos && !cuestion && !decision && !argumento && !votos && !palabrasClave) {
+    avisar('No se reconoció el formato — revise que sea la respuesta completa de Copilot');
+    return;
+  }
+
+  const partesResumen = [];
+  if (hechos)     partesResumen.push('Hechos: ' + hechos);
+  if (cuestion)    partesResumen.push('Cuestión jurídica: ' + cuestion);
+  if (decision)    partesResumen.push('Decisión: ' + decision);
+  if (argumento)   partesResumen.push('Argumento central: ' + argumento);
+  if (partesResumen.length) {
+    document.querySelector('textarea[name="resumen"]').value = partesResumen.join('\n\n');
+  }
+
+  if (votos && !/no hubo/i.test(votos)) {
+    document.querySelector('textarea[name="votos_disidentes"]').value = votos;
+  }
+
+  if (palabrasClave) {
+    const campoTags = document.querySelector('input[name="tags"]');
+    const existentes = campoTags.value.split(',').map(t => t.trim()).filter(Boolean);
+    const nuevas = palabrasClave.split(',').map(t => t.trim()).filter(Boolean);
+    const existentesMin = existentes.map(t => t.toLowerCase());
+    const combinadas = existentes.concat(nuevas.filter(t => !existentesMin.includes(t.toLowerCase())));
+    campoTags.value = combinadas.join(', ');
+  }
+
+  avisar('✓ Campos completados');
+}
+</script>
 {% endblock %}
